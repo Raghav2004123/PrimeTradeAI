@@ -8,9 +8,11 @@ export default function Dashboard() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
-  const [tasks, setTasks] = useState([]); 
+  const [tasks, setTasks] = useState([]);
+  const [editId, setEditId] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
 
-  
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) navigate("/login");
@@ -26,7 +28,7 @@ export default function Dashboard() {
         },
       });
 
-      setTasks(res.data.tasks || []); // FIXED
+      setTasks(res.data.tasks || []);
     } catch (err) {
       console.log("Error fetching tasks", err);
     }
@@ -48,12 +50,57 @@ export default function Dashboard() {
 
       if (res.data.success) {
         setError("Task Added!");
-        setTitle(""); 
-        setDescription(""); 
+        setTitle("");
+        setDescription("");
         fetchTasks();
       }
     } catch (err) {
       setError("Failed to add task");
+    }
+  };
+
+
+  const deleteTask = async (id) => {
+    try {
+      await axios.delete(`http://localhost:3000/tasks/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      fetchTasks();
+    } catch (err) {
+      console.log("Failed to delete", err);
+    }
+  };
+
+
+  const startEdit = (task) => {
+    setEditId(task.id);
+    setEditTitle(task.title);
+    setEditDescription(task.description);
+  };
+
+
+  const updateTask = async () => {
+    try {
+      await axios.put(
+        `http://localhost:3000/tasks/${editId}`,
+        {
+          title: editTitle,
+          description: editDescription,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      setEditId(null);
+      fetchTasks();
+    } catch (err) {
+      console.log("Error updating task", err);
     }
   };
 
@@ -64,20 +111,13 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen flex bg-gray-100">
-      
       <aside className="w-64 bg-black text-white p-6 hidden md:block">
         <h2 className="text-2xl font-bold mb-8">Dashboard</h2>
 
         <nav className="space-y-4">
-          <button className="block w-full text-left hover:text-gray-300 hover-underline">
-            Overview
-          </button>
-          <button className="block w-full text-left hover:text-gray-300 hover-underline">
-            Profile
-          </button>
-          <button className="block w-full text-left hover:text-gray-300 hover-underline">
-            Settings
-          </button>
+          <button className="block w-full text-left hover:text-gray-300">Overview</button>
+          <button className="block w-full text-left hover:text-gray-300">Profile</button>
+          <button className="block w-full text-left hover:text-gray-300">Settings</button>
           <button
             onClick={handleLogout}
             className="block w-full text-left text-red-400 hover:text-red-300"
@@ -87,11 +127,9 @@ export default function Dashboard() {
         </nav>
       </aside>
 
-   
       <div className="flex-1 p-6">
-       
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold">Welcome Back👋</h1>
+          <h1 className="text-2xl font-semibold">Welcome Back 👋</h1>
 
           <button
             onClick={handleLogout}
@@ -101,47 +139,24 @@ export default function Dashboard() {
           </button>
         </div>
 
-     
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-gray-700 text-lg font-medium">Total Users</h3>
-            <p className="text-3xl font-bold mt-2">1,234</p>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-gray-700 text-lg font-medium">
-              Active Sessions
-            </h3>
-            <p className="text-3xl font-bold mt-2">87</p>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-gray-700 text-lg font-medium">New Signups</h3>
-            <p className="text-3xl font-bold mt-2">42</p>
-          </div>
-        </div>
-
-        
         <div className="mt-10 bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">Activity Overview</h2>
 
           <form onSubmit={handletasks}>
-            {error && (
-              <p className="text-red-500 text-sm text-center mb-3">{error}</p>
-            )}
+            {error && <p className="text-red-500 text-sm text-center mb-3">{error}</p>}
 
-            <label className="text-2xl">Tasks</label>
+            <label className="text-xl">Add Task</label>
             <br />
 
             <input
-              className="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-400 mb-2"
+              className="w-full px-4 py-2 border rounded-lg mb-2"
               placeholder="Enter Task"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
 
             <input
-              className="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-400 mb-2"
+              className="w-full px-4 py-2 border rounded-lg mb-2"
               placeholder="Enter Description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -152,7 +167,6 @@ export default function Dashboard() {
             </button>
           </form>
 
-     
           <div className="mt-6">
             <h3 className="text-lg font-semibold mb-2">Your Tasks</h3>
 
@@ -162,8 +176,53 @@ export default function Dashboard() {
               <ul className="space-y-3">
                 {tasks.map((t) => (
                   <li key={t.id} className="p-3 bg-gray-100 rounded">
-                    <p className="font-bold">{t.title}</p>
-                    <p className="text-sm text-gray-700">{t.description}</p>
+                    {editId === t.id ? (
+                      <>
+                        <input
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          className="w-full border p-1 mb-2"
+                        />
+                        <input
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          className="w-full border p-1 mb-2"
+                        />
+
+                        <button
+                          onClick={updateTask}
+                          className="bg-blue-500 text-white px-3 py-1 mr-2 rounded"
+                        >
+                          Save
+                        </button>
+
+                        <button
+                          onClick={() => setEditId(null)}
+                          className="bg-gray-400 text-white px-3 py-1 rounded"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-bold">{t.title}</p>
+                        <p className="text-sm text-gray-700">{t.description}</p>
+
+                        <button
+                          onClick={() => startEdit(t)}
+                          className="bg-yellow-500 text-white px-3 py-1 mr-2 rounded"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() => deleteTask(t.id)}
+                          className="bg-red-500 text-white px-3 py-1 rounded"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -12,13 +12,30 @@ export default function Dashboard() {
   const [editId, setEditId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const[profile,setProfile]=useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) navigate("/login");
 
     fetchTasks();
+    fetchprofile();
   }, []);
+
+  const fetchprofile = async () => {
+    try {
+      const res = await axios.get("http://localhost:3000/profile", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      setProfile(res.data.user);
+
+    } catch (err) {
+      console.log("Error fetching tasks", err);
+    }
+  };
 
   const fetchTasks = async () => {
     try {
@@ -129,7 +146,7 @@ export default function Dashboard() {
 
       <div className="flex-1 p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold">Welcome Back 👋</h1>
+          <h1 className="text-2xl font-semibold">Welcome Back {profile.name} 👋</h1>
 
           <button
             onClick={handleLogout}
@@ -138,6 +155,24 @@ export default function Dashboard() {
             Logout
           </button>
         </div>
+
+        {profile && (
+  <div className="bg-white p-5 rounded-lg shadow mb-6">
+    <h2 className="text-xl font-semibold mb-3">Your Profile</h2>
+
+    <p><span className="font-bold">Name:</span> {profile.name}</p>
+    <p><span className="font-bold">Email:</span> {profile.email}</p>
+    <p><span className="font-bold">User ID:</span> {profile.id}</p>
+
+    {profile.created_at && (
+      <p>
+        <span className="font-bold">Joined:</span>{" "}
+        {new Date(profile.created_at).toLocaleDateString()}
+      </p>
+    )}
+  </div>
+)}
+
 
         <div className="mt-10 bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">Activity Overview</h2>
